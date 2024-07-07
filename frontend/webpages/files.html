@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Files</title>
+</head>
+<body>
+  <h1>Uploaded Files</h1>
+  <form action="/perform_operation" method="post">
+    <ul>
+      {% for file in files %}
+        <li>
+          <input type="checkbox" name="file_ids" value="{{ file.id }}">
+          {{ file.filename }}
+        </li>
+      {% endfor %}
+    </ul>
+    <input type="submit" value="Perform Operation">
+  </form>
+  <a href="{{ url_for('index') }}">Upload another file</a>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul>
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+</body>
+</html>
