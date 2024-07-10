@@ -1,9 +1,14 @@
 from flask import Flask, request, redirect, url_for, render_template, flash, session
 from flask_sqlalchemy import SQLAlchemy
-import numpy as np
+import weaviate
+
 import os
 import tempfile
 import shutil
+import uuid
+
+from frontend.tools import RAG_builder
+from frontend.tools import retriever
 
 app = Flask(__name__, template_folder='../webpages', static_folder='../static')
 app.config['UPLOAD_FOLDER'] = '../../uploads'
@@ -12,6 +17,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your_secret_key'  # Needed for flashing messages
 
 db = SQLAlchemy(app)
+
+client_map = {}
 
 
 class File(db.Model):
@@ -24,13 +31,18 @@ class File(db.Model):
         self.data = data
 
 
+class UserSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(255), nullable=False, unique=True)
+    temp_dir = db.Column(db.String(255), nullable=True)
+
+    def __init__(self, session_id, temp_dir):
+        self.session_id = session_id
+        self.temp_dir = temp_dir
+
+
 with app.app_context():
     db.create_all()
-
-
-def extract_content(file_data):
-    # Dummy content extraction for demonstration purposes
-    return np.random.rand(512).astype('float32')
 
 
 @app.route('/')
@@ -65,6 +77,10 @@ def list_files():
     return render_template('files.html', files=files)
 
 
+def get_weaviate_client(weaviate_host: str):
+    return weaviate.Client(weaviate_host)
+
+
 @app.route('/perform_operation', methods=['POST'])
 def perform_operation():
     selected_files = request.form.getlist('file_ids')
@@ -76,6 +92,16 @@ def perform_operation():
     temp_dir = tempfile.mkdtemp()
     session['temp_dir'] = temp_dir
 
+    session_id = str(uuid.uuid4())
+    session['id'] = session_id
+
+    user_session = UserSession(session_id=session_id, temp_dir=temp_dir)
+    db.session.add(user_session)
+    db.session.commit()
+
+    client = weaviate.connect_to_local()
+    client_map[session_id] = client
+    RAG_builder.build_RAG(files, client)
 
     return redirect(url_for('inference_page'))
 
@@ -83,16 +109,14 @@ def perform_operation():
 @app.route('/inference', methods=['GET', 'POST'])
 def inference_page():
     if request.method == 'POST':
-        flash(f'reading indexes and search')
-        # query_vector = np.random.rand(512).astype('float32')  # Dummy query vector
-        # temp_dir = session.get('temp_dir')
-        # if temp_dir:
-        #     index = faiss.read_index(os.path.join(temp_dir, 'vector_index'))
-        #     distances, indices = index.inference(np.array([query_vector]), k=5)
-        #     results = [indices[0]]  # For demonstration, returning the indices of top results
-        #     flash(f'inference results: {results}')
-        # else:
-        #     flash('No temporary vector database found')
+        query_text = request.form.get("query_text", "")
+        session_id = session.pop('id')
+        user_session = UserSession.query.filter_by(session_id=session_id).first()
+        if user_session:
+            result = retriever.semantic_search(query_text, 3)
+            flash(f'Search results: {result}')
+        else:
+            flash('No Weaviate session found')
 
     return render_template('inference.html')
 
