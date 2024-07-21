@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import weaviate
 
 import os
+from openai import OpenAI
 import tempfile
 import shutil
 import uuid
@@ -14,7 +15,6 @@ app = Flask(__name__, template_folder='../webpages', static_folder='../static')
 app.config['UPLOAD_FOLDER'] = '../../uploads'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../../files.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'your_secret_key'  # Needed for flashing messages
 
 db = SQLAlchemy(app)
 
@@ -110,11 +110,23 @@ def perform_operation():
 def inference_page():
     if request.method == 'POST':
         query_text = request.form.get("query_text", "")
-        session_id = session.pop('id')
+        session_id = session['id']
         user_session = UserSession.query.filter_by(session_id=session_id).first()
         if user_session:
-            result = retriever.semantic_search(query_text, 3)
-            flash(f'Search results: {result}')
+            search_result = retriever.semantic_search(query_text, 3)
+            flash(f'Search results: {search_result}')
+
+            try:
+                openai_client = OpenAI(base_url='http://127.0.0.1:8081/v1', api_key='sk-no-key-required')
+                completion = openai_client.chat.completions.create(
+                    model='LLaMA_CPP',
+                    messages=[{'role': 'user', 'content': '\n'.join([query_text, search_result])}]
+                )
+                flash(f'Llama Output: {completion.choices[0].message.content}')
+            except Exception as e:
+                flash(f'Error running LlamaFile: {e}')
+                return redirect(url_for('inference_page'))
+
         else:
             flash('No Weaviate session found')
 
@@ -123,10 +135,19 @@ def inference_page():
 
 @app.route('/cleanup')
 def cleanup():
-    temp_dir = session.pop('temp_dir', None)
-    if temp_dir and os.path.exists(temp_dir):
-        shutil.rmtree(temp_dir)
-        flash('Temporary vector database cleaned up')
+    user_session = UserSession.query.filter_by(session_id=session['id']).first()
+
+    # If the session exists
+    if user_session:
+        # Remove the temporary directory if it exists
+        if user_session.temp_dir and os.path.exists(user_session.temp_dir):
+            shutil.rmtree(user_session.temp_dir)
+
+        # Delete the session details from the database
+        db.session.delete(user_session)
+        db.session.commit()
+
+        flash('Temporary data cleaned up')
     return redirect(url_for('list_files'))
 
 
