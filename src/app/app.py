@@ -102,8 +102,9 @@ def perform_operation():
 
     client = weaviate.connect_to_local(host='weaviate', port=8080, grpc_port=50051)
     client_map[session_id] = client
-    RAG_builder.build_RAG(files, client)
+    RAG_builder.build_rag(files, client)
 
+    flash('Operation performed successfully')
     return redirect(url_for('inference_page'))
 
 
@@ -141,6 +142,10 @@ def inference_page():
 
 @app.route('/cleanup')
 def cleanup():
+    session_id = session.get('id')
+    if not session_id:
+        flash('No active session found')
+        return redirect(url_for('list_files'))
     user_session = UserSession.query.filter_by(session_id=session['id']).first()
 
     # If the session exists
@@ -154,6 +159,8 @@ def cleanup():
         db.session.commit()
 
         flash('Temporary data cleaned up')
+    else:
+        flash('No user session found')
     return redirect(url_for('list_files'))
 
 

@@ -10,7 +10,7 @@ class_name = 'TextChunk'
 nltk.download('punkt')
 
 
-def build_RAG(files, weaviate_client):
+def build_rag(files, weaviate_client):
     initiate_storage(weaviate_client)
     for file in files:
         content = utils.extract_content(file.data)
