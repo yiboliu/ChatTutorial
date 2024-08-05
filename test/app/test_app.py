@@ -66,7 +66,9 @@ class TestApp(unittest.TestCase):
             file_id = file.id
 
         # Perform the operation
-        response = self.app.post("/perform_operation", data={"file_ids": [file_id]})
+        response = self.app.post(
+            "/perform_operation", data={"file_ids": [file_id]}
+        )
 
         # Check redirect
         self.assertEqual(response.status_code, 302)
@@ -80,7 +82,9 @@ class TestApp(unittest.TestCase):
 
         # Check if a UserSession was created
         with app.app_context():
-            user_session = UserSession.query.filter_by(session_id=test_uuid).first()
+            user_session = UserSession.query.filter_by(
+                session_id=test_uuid
+            ).first()
             self.assertIsNotNone(user_session)
             self.assertEqual(user_session.temp_dir, "/tmp/test_dir")
 
@@ -105,17 +109,23 @@ class TestApp(unittest.TestCase):
         mock_semantic_search.return_value = "Mock search results"
         mock_completion = MagicMock()
         mock_completion.choices[0].message.content = "Mock LLM response"
-        mock_openai.return_value.chat.completions.create.return_value = mock_completion
+        mock_openai.return_value.chat.completions.create.return_value = (
+            mock_completion
+        )
 
         with app.app_context():
-            user_session = UserSession(session_id="test_session", temp_dir="/tmp/test")
+            user_session = UserSession(
+                session_id="test_session", temp_dir="/tmp/test"
+            )
             db.session.add(user_session)
             db.session.commit()
 
         with self.app.session_transaction() as session:
             session["id"] = "test_session"
 
-        response = self.app.post("/inference", data={"query_text": "test query"})
+        response = self.app.post(
+            "/inference", data={"query_text": "test query"}
+        )
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Mock search results", response.data)
         self.assertIn(b"Mock LLM response", response.data)
@@ -123,10 +133,14 @@ class TestApp(unittest.TestCase):
     @patch("src.app.app.shutil.rmtree")
     @patch("src.app.app.os.path.exists")
     def test_cleanup(self, mock_exists, mock_rmtree):
-        mock_exists.return_value = True  # Simulate that the temp directory exists
+        mock_exists.return_value = (
+            True  # Simulate that the temp directory exists
+        )
 
         with app.app_context():
-            user_session = UserSession(session_id="test_session", temp_dir="/tmp/test")
+            user_session = UserSession(
+                session_id="test_session", temp_dir="/tmp/test"
+            )
             db.session.add(user_session)
             db.session.commit()
 

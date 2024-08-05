@@ -43,7 +43,9 @@ class TestRAGBuilder(unittest.TestCase):
             host="weaviate", port=8080, grpc_port=50051
         )
         mock_client.collections.get.assert_called_once_with("TextChunk")
-        mock_collection.data.insert.assert_called_once_with({"content": "test chunk"})
+        mock_collection.data.insert.assert_called_once_with(
+            {"content": "test chunk"}
+        )
         mock_client.close.assert_called_once()
 
     def test_initiate_storage(self):
@@ -113,7 +115,9 @@ class TestRAGBuilder(unittest.TestCase):
             host="weaviate", port=8080, grpc_port=50051
         )
         mock_client.collections.get.assert_called_once_with("TextChunk")
-        mock_collection.query.fetch_objects.assert_called_once_with(include_vector=True)
+        mock_collection.query.fetch_objects.assert_called_once_with(
+            include_vector=True
+        )
         mock_sentence_transformer.assert_called_once_with(
             "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
         )

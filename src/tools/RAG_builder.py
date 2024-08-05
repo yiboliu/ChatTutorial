@@ -72,13 +72,17 @@ def process_chunk(chunks: []):
 
 
 def semantic_search(query: str, chunk_num: int) -> str:
-    client = weaviate.connect_to_local(host="weaviate", port=8080, grpc_port=50051)
+    client = weaviate.connect_to_local(
+        host="weaviate", port=8080, grpc_port=50051
+    )
     try:
         collection = client.collections.get(class_name)
         response = collection.query.fetch_objects(include_vector=True)
         vectors = [o.vector["default"] for o in response.objects]
 
-        model = SentenceTransformer("sentence-transformers/multi-qa-MiniLM-L6-cos-v1")
+        model = SentenceTransformer(
+            "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
+        )
         query_vector = model.encode(query)
 
         dot_product = np.dot(vectors, query_vector)

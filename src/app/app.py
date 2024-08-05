@@ -1,4 +1,12 @@
-from flask import Flask, request, redirect, url_for, render_template, flash, session
+from flask import (
+    Flask,
+    request,
+    redirect,
+    url_for,
+    render_template,
+    flash,
+    session,
+)
 from flask_sqlalchemy import SQLAlchemy
 import weaviate
 
@@ -100,7 +108,9 @@ def perform_operation():
     db.session.add(user_session)
     db.session.commit()
 
-    client = weaviate.connect_to_local(host="weaviate", port=8080, grpc_port=50051)
+    client = weaviate.connect_to_local(
+        host="weaviate", port=8080, grpc_port=50051
+    )
     client_map[session_id] = client
     RAG_builder.build_rag(files, client)
 
@@ -113,7 +123,9 @@ def inference_page():
     if request.method == "POST":
         query_text = request.form.get("query_text", "")
         session_id = session["id"]
-        user_session = UserSession.query.filter_by(session_id=session_id).first()
+        user_session = UserSession.query.filter_by(
+            session_id=session_id
+        ).first()
         if user_session:
             search_result = RAG_builder.semantic_search(query_text, 3)
             flash(f"Search results: {search_result}")
