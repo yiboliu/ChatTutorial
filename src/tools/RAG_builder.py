@@ -1,6 +1,6 @@
-from frontend.tools import utils
-from frontend.tools import vectorizer
-from frontend.tools import chunker
+from src.tools import utils
+from src.tools import vectorizer
+from src.tools import chunker
 
 
 def build_RAG(files, weaviate_client):

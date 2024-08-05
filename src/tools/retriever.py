@@ -1,11 +1,11 @@
 import weaviate
-from frontend.tools.vectorizer import class_name
+from src.tools.vectorizer import class_name
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
 
 def semantic_search(query: str, chunk_num: int) -> str:
-    client = weaviate.connect_to_local()
+    client = weaviate.connect_to_local(host='weaviate', port=8080, grpc_port=50051)
     try:
         collection = client.collections.get(class_name)
         response = collection.query.fetch_objects(include_vector=True)

@@ -7,14 +7,16 @@ from openai import OpenAI
 import tempfile
 import shutil
 import uuid
+import traceback
 
-from frontend.tools import RAG_builder
-from frontend.tools import retriever
+from src.tools import RAG_builder
+from src.tools import retriever
 
 app = Flask(__name__, template_folder='../webpages', static_folder='../static')
 app.config['UPLOAD_FOLDER'] = '../../uploads'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../../files.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'your_secret_key'  # Needed for flashing messages
 
 db = SQLAlchemy(app)
 
@@ -99,7 +101,7 @@ def perform_operation():
     db.session.add(user_session)
     db.session.commit()
 
-    client = weaviate.connect_to_local()
+    client = weaviate.connect_to_local(host='weaviate', port=8080, grpc_port=50051)
     client_map[session_id] = client
     RAG_builder.build_RAG(files, client)
 
@@ -117,14 +119,19 @@ def inference_page():
             flash(f'Search results: {search_result}')
 
             try:
-                openai_client = OpenAI(base_url='http://127.0.0.1:8081/v1', api_key='sk-no-key-required')
+                base_url = os.environ.get('EXTERNAL_SERVER_URL', 'http://localhost:8081')
+                openai_client = OpenAI(base_url=f'{base_url}/v1', api_key='sk-no-key-required')
+                flash(f"llama file endpoint connection: {openai_client}")
                 completion = openai_client.chat.completions.create(
                     model='LLaMA_CPP',
                     messages=[{'role': 'user', 'content': '\n'.join([query_text, search_result])}]
                 )
                 flash(f'Llama Output: {completion.choices[0].message.content}')
+
             except Exception as e:
                 flash(f'Error running LlamaFile: {e}')
+                stack_trace = traceback.format_exc()
+                flash(f'Stack trace {stack_trace}')
                 return redirect(url_for('inference_page'))
 
         else:
@@ -155,4 +162,4 @@ if __name__ == '__main__':
     if not os.path.exists('uploads'):
         os.makedirs('uploads')
 
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

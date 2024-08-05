@@ -1,7 +1,7 @@
 import nltk
 from nltk.tokenize import sent_tokenize
 
-from frontend.tools.vectorizer import add_text_chunk_to_db
+from src.tools.vectorizer import add_text_chunk_to_db
 
 nltk.download('punkt')
 

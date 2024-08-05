@@ -6,7 +6,7 @@ class_name = 'TextChunk'
 
 
 def add_text_chunk_to_db(chunk: str):
-    weaviate_client = weaviate.connect_to_local()
+    weaviate_client = weaviate.connect_to_local(host='weaviate', port=8080, grpc_port=50051)
     try:
         text_chunk = weaviate_client.collections.get(class_name)
         result = text_chunk.data.insert({
