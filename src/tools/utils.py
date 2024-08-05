@@ -7,7 +7,7 @@ def find_available_port(start_port=8000, max_port=9000):
     for port in range(start_port, max_port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.bind(('', port))
+                s.bind(("", port))
                 return port
             except OSError:
                 continue
@@ -20,5 +20,4 @@ def extract_content(file_data):
     for page_num in range(len(pdf_reader.pages)):
         page = pdf_reader.pages[page_num]
         text.append(page.extract_text())
-    return '\n'.join(text)
-
+    return "\n".join(text)
