@@ -10,7 +10,6 @@ import uuid
 import traceback
 
 from src.tools import RAG_builder
-from src.tools import retriever
 
 app = Flask(__name__, template_folder='../webpages', static_folder='../static')
 app.config['UPLOAD_FOLDER'] = '../../uploads'
@@ -115,7 +114,7 @@ def inference_page():
         session_id = session['id']
         user_session = UserSession.query.filter_by(session_id=session_id).first()
         if user_session:
-            search_result = retriever.semantic_search(query_text, 3)
+            search_result = RAG_builder.semantic_search(query_text, 3)
             flash(f'Search results: {search_result}')
 
             try:
