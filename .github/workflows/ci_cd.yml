@@ -47,8 +47,8 @@ jobs:
         file: ./docker/Dockerfile
         push: true
         tags: |
-          ghcr.io/${{ github.repository_owner }}/${{ lower(github.event.repository.name) }}:latest
-          ghcr.io/${{ github.repository_owner }}/${{ lower(github.event.repository.name) }}:${{ github.sha }}
+          ghcr.io/yiboliu/ragcustomizer:latest
+          ghcr.io/yiboliu/ragcustomizer:${{ github.sha }}
         build-args: |
           GITHUB_SHA=${{ github.sha }}
           GITHUB_REF=${{ github.ref }}
