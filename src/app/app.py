@@ -1,3 +1,5 @@
+import time
+
 from flask import (
     Flask,
     request,
@@ -137,7 +139,8 @@ def inference_page():
                 openai_client = OpenAI(
                     base_url=f"{base_url}/v1", api_key="sk-no-key-required"
                 )
-                flash(f"llama file endpoint connection: {openai_client}")
+                before = int(time.time())
+                flash(f"before chatting it's {before}")
                 completion = openai_client.chat.completions.create(
                     model="LLaMA_CPP",
                     messages=[
@@ -148,6 +151,9 @@ def inference_page():
                     ],
                 )
                 flash(f"Llama Output: {completion.choices[0].message.content}")
+                flash(f"Llamafile response creation time {completion.created}")
+                flash(f"Llamafile response time {completion.created - before}")
+
 
             except Exception as e:
                 flash(f"Error running LlamaFile: {e}")
