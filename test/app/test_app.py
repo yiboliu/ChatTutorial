@@ -45,7 +45,7 @@ class TestApp(unittest.TestCase):
         self.assertIn(b"test.txt", response.data)
 
     @patch("src.app.app.weaviate.connect_to_local")
-    @patch("src.app.app.RAG_builder.build_RAG")
+    @patch("src.app.app.RAG_builder.build_rag")
     @patch("src.app.app.tempfile.mkdtemp")
     @patch("src.app.app.uuid.uuid4")
     def test_perform_operation(
