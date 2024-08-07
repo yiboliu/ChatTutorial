@@ -174,6 +174,7 @@ def inference_page():
             ai_response = completion.choices[0].message.content
             flash(f"response created time: {completion.created}")
             flash(f"Llamafile response time consumption: {completion.created - before_time}")
+            flash(f"Llamafile response length: {len(ai_response.split())}")
 
             # Save AI response
             ai_message = Conversation(session_id=session_id, role="assistant", content=ai_response)

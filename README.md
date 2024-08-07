@@ -26,6 +26,7 @@ Before going to any of them, remember to start the llamafile.
 Go to the directory of the llamafile and run the following (I'm using TinyLlma-1.1B-Chat-v1.0.F16.llamafile as an example):
 ``./TinyLlama-1.1B-Chat-v1.0.F16.llamafile --server --port 8081 --nobrowser`` The port number 8081 is set in the code. Feel free to change it as you like.
 ### Pull docker image from registry
+ - log in to docker from your terminal by running ``docker login ghcr.io``
  - pull the docker image from the registry
 ![alt text](https://github.com/yiboliu/RAGCustomizer/blob/main/images/docker_pull.png?raw=true)
  - run the docker container
@@ -42,7 +43,10 @@ Go to the directory of the llamafile and run the following (I'm using TinyLlma-1
 
 After all the service is up, go to ``localhost:5001`` in your browser and enjoy your RAG customization!
 ## Performance/Evaluation Results
+I chose response time and the average time of each token generation as the performance metrics. The results are
 
+Average Response Creation Time Per Input Token: 3.54s/token
+Average Per Output Token Creation Time: 0.059s/token
 ## Unit tests
 All tests are located under `test/` dir, so simply running ``python -m unittest <any test file you like>`` can perform testing
 
