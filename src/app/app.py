@@ -17,7 +17,6 @@ from openai import OpenAI
 import tempfile
 import shutil
 import uuid
-import traceback
 
 from src.tools import RAG_builder
 
@@ -50,6 +49,19 @@ class UserSession(db.Model):
     def __init__(self, session_id, temp_dir):
         self.session_id = session_id
         self.temp_dir = temp_dir
+
+
+class Conversation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(50), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.Integer, default=int(time.time()))
+
+    def __init__(self, session_id, role, content):
+        self.session_id = session_id
+        self.role = role
+        self.content = content
 
 
 with app.app_context():
@@ -122,49 +134,59 @@ def perform_operation():
 
 @app.route("/inference", methods=["GET", "POST"])
 def inference_page():
+    session_id = session.get("id")
+    if not session_id:
+        flash("No active session found")
+        return redirect(url_for("list_files"))
+
+    user_session = UserSession.query.filter_by(session_id=session_id).first()
+    if not user_session:
+        flash("No Weaviate session found")
+        return redirect(url_for("list_files"))
+
+    conversation = Conversation.query.filter_by(session_id=session_id).order_by(Conversation.timestamp).all()
+
     if request.method == "POST":
         query_text = request.form.get("query_text", "")
-        session_id = session["id"]
-        user_session = UserSession.query.filter_by(
-            session_id=session_id
-        ).first()
-        if user_session:
-            search_result = RAG_builder.semantic_search(query_text, 3)
-            flash(f"Search results: {search_result}")
 
-            try:
-                base_url = os.environ.get(
-                    "EXTERNAL_SERVER_URL", "http://localhost:8081"
-                )
-                openai_client = OpenAI(
-                    base_url=f"{base_url}/v1", api_key="sk-no-key-required"
-                )
-                before = int(time.time())
-                flash(f"before chatting it's {before}")
-                completion = openai_client.chat.completions.create(
-                    model="LLaMA_CPP",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": "\n".join([query_text, search_result]),
-                        }
-                    ],
-                )
-                flash(f"Llama Output: {completion.choices[0].message.content}")
-                flash(f"Llamafile response creation time {completion.created}")
-                flash(f"Llamafile response time {completion.created - before}")
+        # Save user message
+        user_message = Conversation(session_id=session_id, role="user", content=query_text)
+        db.session.add(user_message)
+        db.session.commit()
 
+        search_result = RAG_builder.semantic_search(query_text, 3)
 
-            except Exception as e:
-                flash(f"Error running LlamaFile: {e}")
-                stack_trace = traceback.format_exc()
-                flash(f"Stack trace {stack_trace}")
-                return redirect(url_for("inference_page"))
+        try:
+            base_url = os.environ.get("EXTERNAL_SERVER_URL", "http://localhost:8081")
+            openai_client = OpenAI(base_url=f"{base_url}/v1", api_key="sk-no-key-required")
 
-        else:
-            flash("No Weaviate session found")
+            # Prepare conversation history for the API call
+            messages = [{"role": msg.role, "content": msg.content} for msg in conversation[-5:]]  # Last 5 messages
+            messages.append({"role": "user", "content": f"{query_text}\nContext: {search_result}"})
+            before_time = int(time.time())
+            flash(f"user input time: {before_time}")
 
-    return render_template("inference.html")
+            completion = openai_client.chat.completions.create(
+                model="LLaMA_CPP",
+                messages=messages
+            )
+
+            ai_response = completion.choices[0].message.content
+            flash(f"response created time: {completion.created}")
+            flash(f"Llamafile response time consumption: {completion.created - before_time}")
+
+            # Save AI response
+            ai_message = Conversation(session_id=session_id, role="assistant", content=ai_response)
+            db.session.add(ai_message)
+            db.session.commit()
+
+        except Exception as e:
+            ai_response = f"Error running LlamaFile: {str(e)}"
+            flash(ai_response)
+
+        return redirect(url_for("inference_page"))
+
+    return render_template("inference.html", conversation=conversation)
 
 
 @app.route("/cleanup")

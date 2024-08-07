@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from src.app.app import app, db, File, UserSession
+from src.app.app import app, db, File, UserSession, Conversation
 from io import BytesIO
 import uuid
 
@@ -109,26 +109,27 @@ class TestApp(unittest.TestCase):
         mock_semantic_search.return_value = "Mock search results"
         mock_completion = MagicMock()
         mock_completion.choices[0].message.content = "Mock LLM response"
-        mock_openai.return_value.chat.completions.create.return_value = (
-            mock_completion
-        )
+        mock_openai.return_value.chat.completions.create.return_value = mock_completion
 
         with app.app_context():
-            user_session = UserSession(
-                session_id="test_session", temp_dir="/tmp/test"
-            )
+            user_session = UserSession(session_id="test_session", temp_dir="/tmp/test")
             db.session.add(user_session)
             db.session.commit()
 
         with self.app.session_transaction() as session:
             session["id"] = "test_session"
 
-        response = self.app.post(
-            "/inference", data={"query_text": "test query"}
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Mock search results", response.data)
-        self.assertIn(b"Mock LLM response", response.data)
+        response = self.app.post("/inference", data={"query_text": "test query"})
+        self.assertEqual(response.status_code, 302)  # Check for redirect
+
+        # Check if conversation was added to the database
+        with app.app_context():
+            conversations = Conversation.query.filter_by(session_id="test_session").all()
+            self.assertEqual(len(conversations), 2)  # User message and AI response
+            self.assertEqual(conversations[0].role, "user")
+            self.assertEqual(conversations[0].content, "test query")
+            self.assertEqual(conversations[1].role, "assistant")
+            self.assertEqual(conversations[1].content, "Mock LLM response")
 
     @patch("src.app.app.shutil.rmtree")
     @patch("src.app.app.os.path.exists")
