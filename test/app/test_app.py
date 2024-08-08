@@ -66,9 +66,7 @@ class TestApp(unittest.TestCase):
             file_id = file.id
 
         # Perform the operation
-        response = self.app.post(
-            "/perform_operation", data={"file_ids": [file_id]}
-        )
+        response = self.app.post("/perform_operation", data={"file_ids": [file_id]})
 
         # Check redirect
         self.assertEqual(response.status_code, 302)
@@ -82,9 +80,7 @@ class TestApp(unittest.TestCase):
 
         # Check if a UserSession was created
         with app.app_context():
-            user_session = UserSession.query.filter_by(
-                session_id=test_uuid
-            ).first()
+            user_session = UserSession.query.filter_by(session_id=test_uuid).first()
             self.assertIsNotNone(user_session)
             self.assertEqual(user_session.temp_dir, "/tmp/test_dir")
 
@@ -124,7 +120,9 @@ class TestApp(unittest.TestCase):
 
         # Check if conversation was added to the database
         with app.app_context():
-            conversations = Conversation.query.filter_by(session_id="test_session").all()
+            conversations = Conversation.query.filter_by(
+                session_id="test_session"
+            ).all()
             self.assertEqual(len(conversations), 2)  # User message and AI response
             self.assertEqual(conversations[0].role, "user")
             self.assertEqual(conversations[0].content, "test query")
@@ -134,14 +132,10 @@ class TestApp(unittest.TestCase):
     @patch("src.app.app.shutil.rmtree")
     @patch("src.app.app.os.path.exists")
     def test_cleanup(self, mock_exists, mock_rmtree):
-        mock_exists.return_value = (
-            True  # Simulate that the temp directory exists
-        )
+        mock_exists.return_value = True  # Simulate that the temp directory exists
 
         with app.app_context():
-            user_session = UserSession(
-                session_id="test_session", temp_dir="/tmp/test"
-            )
+            user_session = UserSession(session_id="test_session", temp_dir="/tmp/test")
             db.session.add(user_session)
             db.session.commit()
 

@@ -43,14 +43,18 @@ Go to the directory of the llamafile and run the following (I'm using TinyLlma-1
 
 After all the service is up, go to ``localhost:5001`` in your browser and enjoy your RAG customization!
 ## Performance/Evaluation Results
-I chose response time and the average time of each token generation as the performance metrics. The results are
-
-Average Response Creation Time Per Input Token: 3.54s/token
-Average Per Output Token Creation Time: 0.059s/token
+I chose response time and the average time of each token generation as the performance metrics. The results are as follows:
+- Average Response Creation Time Per Input Token: 3.54s/token
+- Average Per Output Token Creation Time: 0.059s/token
+- NOTE: the speed improves significantly after the first time run after service up.
 ## Unit tests
 All tests are located under `test/` dir, so simply running ``python -m unittest <any test file you like>`` can perform testing
 
 ## Model Selection
-The reason I choose `TinyLlama-1.1B-Chat-v1.0.F16.llamafile` is simply for demo purpose. You can choose whatever model you like. 
+The reason I choose `TinyLlama-1.1B-Chat-v1.0.F16.llamafile` is simply for demo purpose.
+You can choose whatever model you like. 
 For demo purpose, this model is small in size, performant and has a variety of application scenarios. 
 Due to the excellent balance between performance and resource efficiency, I chose it. 
+
+## Demo Video 
+- [Video Link](https://duke.box.com/s/0laovm1kf2w7yj2b7omxcf7ozc0asmaz)

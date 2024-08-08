@@ -20,12 +20,14 @@ import uuid
 
 from src.tools import RAG_builder
 
+# Set up the service of flask app.
 app = Flask(__name__, template_folder="../webpages", static_folder="../static")
 app.config["UPLOAD_FOLDER"] = "../../uploads"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///../../files.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = "your_secret_key"  # Needed for flashing messages
 
+# This is the SQL DB, which is used to store uploaded files.
 db = SQLAlchemy(app)
 
 client_map = {}
@@ -75,6 +77,8 @@ def index():
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
+    """This endpoint allows users to upload files to the SQL database. The uploaded files are visible to all users and
+    available for all users to select for semantic search."""
     if "file" not in request.files:
         flash("No file part")
         return redirect(request.url)
@@ -96,16 +100,15 @@ def upload_file():
 
 @app.route("/files")
 def list_files():
+    """This endpoint lists all the files that are currently stored in the SQL database."""
     files = File.query.all()
     return render_template("files.html", files=files)
 
 
-def get_weaviate_client(weaviate_host: str):
-    return weaviate.Client(weaviate_host)
-
-
 @app.route("/perform_operation", methods=["POST"])
 def perform_operation():
+    """This endpoint enables user to store the selected files in the vector database so that those files can be used to
+    provide context information for conversation"""
     selected_files = request.form.getlist("file_ids")
     if not selected_files:
         flash("No files selected")
@@ -122,9 +125,7 @@ def perform_operation():
     db.session.add(user_session)
     db.session.commit()
 
-    client = weaviate.connect_to_local(
-        host="weaviate", port=8080, grpc_port=50051
-    )
+    client = weaviate.connect_to_local(host="weaviate", port=8080, grpc_port=50051)
     client_map[session_id] = client
     RAG_builder.build_rag(files, client)
 
@@ -134,6 +135,7 @@ def perform_operation():
 
 @app.route("/inference", methods=["GET", "POST"])
 def inference_page():
+    """This endpoint enables users to chat with the chatbot. Llamafile will respond to each of user's input"""
     session_id = session.get("id")
     if not session_id:
         flash("No active session found")
@@ -144,40 +146,56 @@ def inference_page():
         flash("No Weaviate session found")
         return redirect(url_for("list_files"))
 
-    conversation = Conversation.query.filter_by(session_id=session_id).order_by(Conversation.timestamp).all()
+    conversation = (
+        Conversation.query.filter_by(session_id=session_id)
+        .order_by(Conversation.timestamp)
+        .all()
+    )
 
     if request.method == "POST":
         query_text = request.form.get("query_text", "")
 
         # Save user message
-        user_message = Conversation(session_id=session_id, role="user", content=query_text)
+        user_message = Conversation(
+            session_id=session_id, role="user", content=query_text
+        )
         db.session.add(user_message)
         db.session.commit()
 
+        # find the context information from teh vector database with the user input as the query.
         search_result = RAG_builder.semantic_search(query_text, 3)
 
         try:
             base_url = os.environ.get("EXTERNAL_SERVER_URL", "http://localhost:8081")
-            openai_client = OpenAI(base_url=f"{base_url}/v1", api_key="sk-no-key-required")
+            openai_client = OpenAI(
+                base_url=f"{base_url}/v1", api_key="sk-no-key-required"
+            )
 
             # Prepare conversation history for the API call
-            messages = [{"role": msg.role, "content": msg.content} for msg in conversation[-5:]]  # Last 5 messages
-            messages.append({"role": "user", "content": f"{query_text}\nContext: {search_result}"})
+            messages = [
+                {"role": msg.role, "content": msg.content} for msg in conversation[-5:]
+            ]  # Last 5 messages
+            messages.append(
+                {"role": "user", "content": f"{query_text}\nContext: {search_result}"}
+            )
             before_time = int(time.time())
             flash(f"user input time: {before_time}")
 
             completion = openai_client.chat.completions.create(
-                model="LLaMA_CPP",
-                messages=messages
+                model="LLaMA_CPP", messages=messages
             )
 
             ai_response = completion.choices[0].message.content
             flash(f"response created time: {completion.created}")
-            flash(f"Llamafile response time consumption: {completion.created - before_time}")
+            flash(
+                f"Llamafile response time consumption: {completion.created - before_time}"
+            )
             flash(f"Llamafile response length: {len(ai_response.split())}")
 
             # Save AI response
-            ai_message = Conversation(session_id=session_id, role="assistant", content=ai_response)
+            ai_message = Conversation(
+                session_id=session_id, role="assistant", content=ai_response
+            )
             db.session.add(ai_message)
             db.session.commit()
 
@@ -186,12 +204,14 @@ def inference_page():
             flash(ai_response)
 
         return redirect(url_for("inference_page"))
-
+    # Navigate to the same page so that the previous chat log of this conversation is maintained.
     return render_template("inference.html", conversation=conversation)
 
 
 @app.route("/cleanup")
 def cleanup():
+    """This endpoint performs cleaning up. It removes temporary directory for that user session and delete the user
+    session from the database"""
     session_id = session.get("id")
     if not session_id:
         flash("No active session found")

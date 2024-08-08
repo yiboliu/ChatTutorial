@@ -19,9 +19,7 @@ class TestUtils(unittest.TestCase):
 
     @patch("socket.socket")
     def test_find_available_port_no_free_ports(self, mock_socket):
-        mock_socket.return_value.__enter__.return_value.bind.side_effect = (
-            OSError
-        )
+        mock_socket.return_value.__enter__.return_value.bind.side_effect = OSError
 
         with self.assertRaises(IOError):
             find_available_port(start_port=8000, max_port=8002)
